@@ -1,9 +1,4 @@
-# models/lam.py
-"""
-Layer-wise Adapter Module (LAM) - 严格按照论文实现
-整合ILTM、FDM和LSM的完整适配模块
-"""
-
+#
 import torch
 import torch.nn as nn
 from .iltm import ILTM
