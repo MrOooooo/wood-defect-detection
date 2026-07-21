@@ -1,0 +1,59 @@
+# configs/lsfa_config.py
+
+import os
+from configs.lam_config import config as lam_config
+
+
+class LSFAConfig:
+    """LSFA预训练配置"""
+
+    def __init__(self):
+        # ========== 继承LAM配置 ==========
+        self.device = lam_config.device
+        self.num_workers = lam_config.num_workers
+        self.image_size = lam_config.image_size
+
+        # 数据集路径
+        self.dataset_root = lam_config.dataset_root
+        self.rubber_wood_path = lam_config.rubber_wood_path
+        self.pine_wood_path = lam_config.pine_wood_path
+        self.dinov2_model_path = lam_config.dinov2_model_path
+
+        # 输出目录
+        self.output_root = os.path.join(lam_config.PROJECT_ROOT, 'lsfa-pretrain-output')
+        self.checkpoint_dir = os.path.join(self.output_root, 'checkpoints')
+        self.log_dir = os.path.join(self.output_root, 'logs')
+
+        # ========== LSFA特定配置 ==========
+
+        # 预训练参数
+        self.num_epochs = 100  # LSFA预训练轮数
+        self.batch_size = 16  # 较大的batch size用于对比学习
+        self.learning_rate = 1e-4
+        self.weight_decay = 0.01
+
+        # LSFA模块参数
+        self.feature_dim = 768  # DINOv2-base
+        self.hidden_dim = 512
+        self.num_heads = 8
+        self.temperature = 0.07  # 对比学习温度
+        self.adapt_layers = [8, 9, 10, 11]  # 适配最后4层
+
+        # 数据增强
+        self.use_strong_aug = True
+
+        # 保存与评估
+        self.save_freq = 10
+        self.eval_freq = 5
+
+    def create_output_dirs(self):
+        """创建输出目录"""
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        os.makedirs(self.log_dir, exist_ok=True)
+        print(f"✅ LSFA output directories created:")
+        print(f"   Checkpoints: {self.checkpoint_dir}")
+        print(f"   Logs: {self.log_dir}")
+
+
+# 全局配置实例
+lsfa_config = LSFAConfig()
