@@ -1,0 +1,109 @@
+
+# utils/loss.py
+"""
+分割损失函数
+"""
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class SegmentationLoss(nn.Module):
+
+    def __init__(self, num_classes, lambda_cov=0.5, lambda_asl=1.0, ignore_index=255):
+        super(SegmentationLoss, self).__init__()
+        self.num_classes = num_classes
+        self.lambda_cov = lambda_cov
+        self.lambda_asl = lambda_asl  # 新增
+        self.ignore_index = ignore_index
+
+        self.ce_loss = nn.CrossEntropyLoss(ignore_index=ignore_index)
+
+    def forward(self, logits, labels, cov_loss=None, asl_loss=None):
+            """
+            新增参数：
+                asl_loss: ASL patch-level对比损失
+            """
+            # 分割损失
+            seg_loss = self.segmentation_loss(logits, labels)
+
+            # 总损失
+            total_loss = seg_loss
+            loss_dict = {
+                'seg_loss': seg_loss.item(),
+                'total_loss': total_loss.item()
+            }
+
+            # 协方差损失
+            if cov_loss is not None:
+                total_loss = total_loss + self.lambda_cov * cov_loss
+                loss_dict['cov_loss'] = cov_loss.item()
+
+            # ASL损失（新增）
+            if asl_loss is not None:
+                total_loss = total_loss + self.lambda_asl * asl_loss
+                loss_dict['asl_loss'] = asl_loss.item()
+
+            loss_dict['total_loss'] = total_loss.item()
+
+            return total_loss, loss_dict
+
+    def segmentation_loss(self, logits, labels):
+        """
+        计算分割损失
+        Args:
+            logits: (B, C, H, W) 预测logits
+            labels: (B, H, W) 真实标签
+        Returns:
+            loss: 标量损失
+        """
+        # ⭐ 添加标签范围检查
+        if labels.max() >= self.num_classes:
+            print(f"Warning: Label max {labels.max()} >= num_classes {self.num_classes}")
+            labels = torch.clamp(labels, 0, self.num_classes - 1)
+
+        if labels.min() < 0:
+            print(f"Warning: Label min {labels.min()} < 0")
+            labels = torch.clamp(labels, 0, self.num_classes - 1)
+
+        # 交叉熵损失
+        ce_loss = F.cross_entropy(
+            logits,
+            labels,
+            ignore_index=self.ignore_index,
+            reduction='mean'
+        )
+
+        # Dice损失
+        dice_loss = self.dice_loss(logits, labels)
+
+        return ce_loss + dice_loss
+        # return self.ce_loss(logits, labels)
+
+    def dice_loss(self, logits, labels):
+        """
+        Dice损失（可选）
+        Args:
+            logits: (B, C, H, W) 预测logits
+            labels: (B, H, W) 真实标签
+        Returns:
+            loss: 标量损失
+        """
+        # Softmax
+        probs = F.softmax(logits, dim=1)
+
+        # One-hot编码标签
+        labels_one_hot = F.one_hot(labels, num_classes=self.num_classes)
+        labels_one_hot = labels_one_hot.permute(0, 3, 1, 2).float()
+
+        # 计算Dice系数
+        intersection = (probs * labels_one_hot).sum(dim=(2, 3))
+        union = probs.sum(dim=(2, 3)) + labels_one_hot.sum(dim=(2, 3))
+
+        dice = (2.0 * intersection + 1e-5) / (union + 1e-5)
+
+        # Dice loss
+        dice_loss = 1.0 - dice.mean()
+
+        return dice_loss
