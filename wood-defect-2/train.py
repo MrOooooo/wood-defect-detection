@@ -15,7 +15,7 @@ from models import LAMSegmentationModel
 from data.dataset import create_dataloader
 from utils.metrics import SegmentationMetrics
 from utils.loss import SegmentationLoss
-from utils.loss_improved import ImprovedSegmentationLoss
+# from utils.loss_improved import ImprovedSegmentationLoss
 from configs.lam_config import config
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -38,6 +38,7 @@ class Trainer:
         self.config = config
         self.device = torch.device(config.device if torch.cuda.is_available() else 'cpu')
 
+        #保存模型和日志目录
         os.makedirs(config.checkpoint_dir, exist_ok=True)
         os.makedirs(config.log_dir, exist_ok=True)
 
