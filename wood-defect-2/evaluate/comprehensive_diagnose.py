@@ -417,7 +417,7 @@ if __name__ == "__main__":
     main()
 
     """
-    
+
     python evaluate/comprehensive_diagnose.py \
     --checkpoint  /home/user4/桌面/wood-defect/wood-defect-output/checkpoints/best_model.pth \
     --device cuda:1
